@@ -3029,6 +3029,19 @@ CHAR_LITERAL
  */
 STRING_LITERAL
     : {nc();}   '"' ( ESC | ~( '"' | '\\' | '\n' | '\r') )* '"'
+      /**
+       * Definition for text blocks
+       */
+      | {nc();} '"' '"' '"'
+        ( '\r' | '\n' )    {newline();}
+        ( { LA(2)!='"' && LA(3)!='"' }? '"'
+          | '\\' '"' '"' '"'
+          | '\r' '\n'       {newline();}
+          | '\r'            {newline();}
+          | '\n'            {newline();}
+          | ~('\n'|'\r'|'"')
+        )*
+        '"' '"' '"'
     ;
 
 // escape sequence -- note that this is protected; it can only be called
