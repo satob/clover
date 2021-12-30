@@ -44,6 +44,7 @@ tokens {
     IMPORT; UNARY_MINUS; UNARY_PLUS; CASE_GROUP; ELIST; FOR_INIT; FOR_CONDITION;
     FOR_ITERATOR; EMPTY_STAT; FINAL="final"; ABSTRACT="abstract";
     STRICTFP="strictfp"; SUPER_CTOR_CALL; CTOR_CALL;
+    SEALED="sealed"; NON_SEALED="non-sealed";
 }
  {
 
@@ -968,6 +969,10 @@ classOrInterfaceModifier returns [int m]
     |   "final"         { m=java.lang.reflect.Modifier.FINAL; }    // for classes only
     |   "static"        { m=java.lang.reflect.Modifier.STATIC; }
     |   "strictfp"      { m=java.lang.reflect.Modifier.STRICT; }
+
+    // Sealed class added in Java 17
+    |   "sealed"        { m=com.atlassian.clover.registry.entities.Modifier.SEALED; }
+    |   "non-sealed"    { m=com.atlassian.clover.registry.entities.Modifier.NON_SEALED; }
     ;
 
 /**
@@ -1067,6 +1072,7 @@ classDefinition! [Modifiers mods] returns [String classname]
         {
             classEntry = enterClass(tags, mods, (CloverToken)id, false, false, false, superclass);
         }
+        permitsClause
         // now parse the body of the class
         endOfBlock = classBlock[classEntry]
         {
@@ -1098,6 +1104,7 @@ recordDefinition! [Modifiers mods] returns [String recordname]
         {
             classEntry = enterClass(tags, mods, (CloverToken)id, false, false, false, superclass);
         }
+        permitsClause
         // now parse the body of the class
         endOfBlock = classBlock[classEntry]
         {
@@ -1156,6 +1163,7 @@ enumDefinition! [Modifiers mods] returns [String name]
         }
 
         implementsClause
+        permitsClause
         endOfBlock = enumBlock[classEntry]
         {
             exitClass(endOfBlock, classEntry);
@@ -1361,6 +1369,16 @@ implementsClause
 }
     :   (
             "implements"! type=classOrInterfaceType ( COMMA! type=classOrInterfaceType )*
+        )?
+    ;
+
+// permits clause for sealed classes
+permitsClause
+{
+   String type = null;
+}
+    :   (
+            "permits"! type=classOrInterfaceType ( COMMA! type=classOrInterfaceType )*
         )?
     ;
 
@@ -3148,12 +3166,16 @@ VOCAB
 
 /**
  * An identifier.  Note that testLiterals is set to true!  This means that after we match the rule, we look in the
- * literals table to see if it's a literal or really an identifer
+ * literals table to see if it's a literal or really an identifer.
+ * The token "non-sealed" contains "-" (not permitted in ordinal token) so treat it as an exception.
  */
 IDENT
 options { testLiterals=true; }
     :
-        { nc(); } IdentifierStart (IdentifierPart)*
+        { nc(); } (
+            IdentifierStart (IdentifierPart)*
+          | "non-sealed"
+        )
     ;
 
 // a complete rewrite of the overly spaghettied NUM_INT rule, to support hex floats
