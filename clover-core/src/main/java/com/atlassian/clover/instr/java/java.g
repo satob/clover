@@ -743,6 +743,7 @@ typeDefinition2[Modifiers mods, CloverToken first, boolean nested]
     :
         (
             name=classDefinition[mods]
+        |   name=recordDefinition[mods]
         |   name=interfaceDefinition[mods]
         |   name=enumDefinition[mods] {isEnum=true;}
         |   name=annotationTypeDeclaration[mods]
@@ -1074,6 +1075,37 @@ classDefinition! [Modifiers mods] returns [String classname]
         }
     ;
 
+// Definition of a record
+recordDefinition! [Modifiers mods] returns [String recordname]
+{
+    CloverToken first = (CloverToken)LT(0);
+    Map<String, List<String>> tags = null;
+    boolean deprecated = false;
+    CloverToken endOfBlock = null;
+    String superclass = null;
+    ClassEntryNode classEntry = null;
+    recordname = null;
+    String typeParam = null;
+}
+    :   "record" {tags = TokenListUtil.getJDocTagsAndValuesOnBlock(first); deprecated = maybeEnterDeprecated(first);}
+        id:IDENT
+        LPAREN! parameterDeclarationList RPAREN!
+
+        // it _might_ have a superclass...
+        superclass = superClassClause
+        // it might implement some interfaces...
+        implementsClause
+        {
+            classEntry = enterClass(tags, mods, (CloverToken)id, false, false, false, superclass);
+        }
+        // now parse the body of the class
+        endOfBlock = classBlock[classEntry]
+        {
+            exitClass(endOfBlock, classEntry); maybeExitDeprecated(deprecated);
+            recordname = id.getText();
+        }
+    ;
+
 superClassClause! returns [String superclass]
 {
    superclass = null;
@@ -1282,7 +1314,7 @@ annotationTypeBody [ClassEntryNode classEntry] returns [CloverToken t]
             |
                 // a nested type declaration
                 // disambiguation: lookup further up to "class/interface" keyword, e.g. "public final class"
-                ( classOrInterfaceModifiers[false] ( "class" | "interface" | AT "interface" | "enum" ) ) =>
+                ( classOrInterfaceModifiers[false] ( "class" | "interface" | AT "interface" | "enum" | "record" ) ) =>
 
                 {
                     topLevelSave = topLevelClass;
@@ -1360,14 +1392,15 @@ field! [ClassEntryNode containingClass]
         }
 
         (
-            // INNER CLASSES, INTERFACES, ENUMS, ANNOTATIONS
+            // INNER CLASSES, INTERFACES, ENUMS, ANNOTATIONS, RECORDS
             // look further to recognize that it's a definition of an inner type
-            ( classOrInterfaceModifiers[false] ( "class" | "interface" | AT "interface" | "enum" ) ) =>
+            ( classOrInterfaceModifiers[false] ( "class" | "interface" | AT "interface" | "enum" | "record" ) ) =>
 
             mods=classOrInterfaceModifiers[false]
             { deprecated = maybeEnterDeprecated(tags, mods); }
             (
                 typename = classDefinition[mods]       // inner class
+            |   typename = recordDefinition[mods]      // inner record
             |   typename = interfaceDefinition[mods]   // inner interface
             |   typename = enumDefinition[mods]   // inner enum
             |   typename = annotationTypeDeclaration[mods] // inner annotation decl
@@ -1765,6 +1798,9 @@ statement [CloverToken owningLabel] returns [CloverToken last]
 
     // class definition
     |   mods=classOrInterfaceModifiers[false]! classname=classDefinition[mods] { instrumentable = false; }//##TODO - return last token
+
+    // record definition
+    |   mods=classOrInterfaceModifiers[false]! classname=recordDefinition[mods] { instrumentable = false; }//##TODO - return last token
 
     // Attach a label to the front of a statement
     |   IDENT COLON {labelTok = owningLabel; if (!labelled) labelTok = first; } last = statement[labelTok]
@@ -3026,12 +3062,12 @@ CHAR_LITERAL
  * String literals. In double quotes we can have:
  *  - a character escaped by a backslash, such as '\t', '\u0000'
  *  - any other character except: CR, LF, double quote, non-escaped backslash
+ *
+ * In the text blocks, we can have any characters except for the three double
+ * quotes not led with a backslash.
  */
 STRING_LITERAL
     : {nc();}   '"' ( ESC | ~( '"' | '\\' | '\n' | '\r') )* '"'
-      /**
-       * Definition for text blocks
-       */
       | {nc();} '"' '"' '"'
         ( '\r' | '\n' )    {newline();}
         ( { LA(2)!='"' && LA(3)!='"' }? '"'
