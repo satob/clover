@@ -23,7 +23,7 @@ public class JavaEnvUtils {
             javaVersion = JAVA_8;
             Class.forName("java.lang.StackWalker");
             javaVersion = JAVA_9;
-            javaVersion = Integer.toString(Runtime.version().feature());
+            javaVersion = SourceVersion.latestSupported().toString().substring("RELEASE_".length());
         } catch (Throwable t) {
             // ignore
         }
