@@ -212,7 +212,7 @@ public class ExpectedExceptionMiner {
                 //because we're likely to satisfy 99.99% of out punters with the most simple approach
                 String className = stripClassNameFromDotClassExpression(classNameValue);
                 if (className != null) {
-                    exceptionNames.add(className);
+                    exceptionNames.add(className.trim());
                 }
             }
         }

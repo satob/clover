@@ -20,7 +20,7 @@ public class JUnit4TestCase {
 		throw new MyException(method("expectedExceptionEncountered1"));
 	}
 
-	@Test(expected = MyException.class)
+	@Test(expected = MyException .class)
 	public void expectedExceptionEncountered2() throws Exception {
 		throw new MyException(method("expectedExceptionEncountered2"));
 	}
