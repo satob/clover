@@ -6,10 +6,16 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+/* Testcase for newArrayDeclarator */
 public class TypeAnnotationInNewOperatorArray {
     private int [][] intArray = new int @AnnotationForType1 [2][2];
+    private char [][] charArray = new char @AnnotationForType1 @AnnotationForType2 [2][2];
 }
 
 @Retention(RUNTIME) @Target({ElementType.TYPE_USE})
 @interface AnnotationForType1 {
+}
+
+@Retention(RUNTIME) @Target({ElementType.TYPE_USE})
+@interface AnnotationForType2 {
 }
